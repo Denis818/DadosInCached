@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
-using DadosInCached.Controllers.Base;
 
 namespace DadosInCached.CustomAttribute
 {
@@ -25,28 +24,16 @@ namespace DadosInCached.CustomAttribute
         //será chamado antes e depois da execução de uma ação do controlador.
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            if (context.Controller is not BaseApiController baseApiController)
-            {
-                await next();
-                return;
-            }
-
             //Headers["Referer"]serve para obter a URL completa de onde a solicitação foi originada.
             //Com isso montamos uma key para usar como a chave de cache.
-            string _cachekey = context.HttpContext.Request.Headers["Referer"].ToString();
+            string _cachekey = CreateCacheKey(context.HttpContext.Request);
 
             // verifica se a ação atual é "cacheável"
-            if (IsNotCacheable(context))
+            if (context.HttpContext.Request.Method != "GET")
             {
+                CleanCache();
                 await next();
                 return;
-            }
-
-            //Esta linha verifica se a chave de cache está vazia ou se nenhum valor foi encontrado para a chave de cache no cache.
-            if (string.IsNullOrEmpty(_cachekey) || !WebApiCache.TryGetValue(_cachekey, out _))
-            {
-                //cria a chave de cache.
-                _cachekey = CreateCacheKey(context.HttpContext.Request, baseApiController);
             }
 
             //Aqui, estamos tentando obter um valor do cache usando a chave de cache.
@@ -54,7 +41,7 @@ namespace DadosInCached.CustomAttribute
             if (WebApiCache.TryGetValue(_cachekey, out Tuple<DateTime, IActionResult> cachedResult))
             {
                 //verifica se o tempo atual é menor que o tempo de expiração armazenado no cache.
-                if (DateTime.UtcNow < cachedResult.Item1)
+                if (DateTime.Now < cachedResult.Item1)
                 {
                     //A resposta é recuperada do cache e o método retorna
                     context.Result = cachedResult.Item2;
@@ -73,13 +60,13 @@ namespace DadosInCached.CustomAttribute
             var executedContext = await next();
 
             //Após a execução da ação, a resposta é armazenada no cache.
-            ArmazenarRespostaEmCache(executedContext, baseApiController);
+            ArmazenarRespostaEmCache(executedContext);
         }
 
-        private void ArmazenarRespostaEmCache(ActionExecutedContext executedContext, BaseApiController baseApiController)
+        private void ArmazenarRespostaEmCache(ActionExecutedContext executedContext)
         {
             //cria a chave de cache.
-            string _cachekey = CreateCacheKey(executedContext.HttpContext.Request, baseApiController);
+            string _cachekey = CreateCacheKey(executedContext.HttpContext.Request);
 
             if (executedContext.Result is OkObjectResult okResult)
             {
@@ -93,7 +80,7 @@ namespace DadosInCached.CustomAttribute
                 //Tipo 'Tuple': tupla é uma classe de coleção no .NET que permite armazenar vários elementos diferentes ex: Tuple<int, string, DateTime> 
                 //criando uma tupla para armazenar no cache, a hora em o cache deve expirar
                 // e o resultado da ação.
-                var resultToCache = new Tuple<DateTime, IActionResult>(DateTime.UtcNow.AddSeconds(_timespan), okResult);
+                var resultToCache = new Tuple<DateTime, IActionResult>(DateTime.Now.AddSeconds(_timespan), okResult);
 
                 //Adicionando a entrada ao cache.
                 //Usando a chave de cache que criamos antes,
@@ -105,26 +92,12 @@ namespace DadosInCached.CustomAttribute
 
         }
 
-        protected string CreateCacheKey(HttpRequest request, BaseApiController baseApiController)
+        protected string CreateCacheKey(HttpRequest request)
         {
-            var requestPath = request.Path;
-            var acceptHeader = request.Headers["Accept"].ToString();
-            var requestContent = baseApiController.ReadRequestBody()?.ToString() ?? string.Empty;
+            string baseUri = $"{request.Scheme}://{request.Host.Value}";
+            string fullPath = $"{request.Path.Value}{request.QueryString.Value}";
 
-            return $"{requestPath}:{acceptHeader}:{requestContent}";
-        }
-
-        protected bool IsNotCacheable(ActionExecutingContext context)
-        {
-            var requestMethod = context.HttpContext.Request.Method;
-
-            if (requestMethod != "POST" && requestMethod != "GET")
-            {
-                CleanCache();
-                return true;
-            }
-
-            return false;
+            return $"{baseUri}{fullPath}";
         }
 
         protected void CleanCache()
