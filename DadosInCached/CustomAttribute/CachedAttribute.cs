@@ -9,26 +9,27 @@ namespace DadosInCached.CustomAttribute
     //com uma chave específica e um tempo de expiração.
     //Isso permite que o resultado seja reutilizado para solicitações futuras sem precisar recalculá-lo,
     //desde que a entrada do cache ainda não tenha expirado.
+    [AttributeUsage(AttributeTargets.Class)]
     public class CachedAttribute : Attribute, IAsyncActionFilter
     {
-        protected readonly MemoryCache WebApiCache = new(new MemoryCacheOptions());
         protected int _timespan;
+
+       //armazenará as chaves dos itens em cache
         protected readonly List<string> KeyList = new();
 
+        //classe que fornece um armazenamento em cache na memória para objetos.
+        protected readonly MemoryCache ApiCache = new(new MemoryCacheOptions());
 
         public CachedAttribute(int timespan = 40)
         {
             _timespan = timespan;
         }
 
-        //será chamado antes e depois da execução de uma ação do controlador.
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            //Headers["Referer"]serve para obter a URL completa de onde a solicitação foi originada.
-            //Com isso montamos uma key para usar como a chave de cache.
             string _cachekey = CreateCacheKey(context.HttpContext.Request);
 
-            // verifica se a ação atual é "cacheável"
+            //se a requisição feita não for um get o cache é limpado para ser atualizado.
             if (context.HttpContext.Request.Method != "GET")
             {
                 CleanCache();
@@ -36,60 +37,28 @@ namespace DadosInCached.CustomAttribute
                 return;
             }
 
-            //Aqui, estamos tentando obter um valor do cache usando a chave de cache.
-            //O valor esperado é uma tupla que contém um objeto DateTime e um objeto IActionResult.
-            if (WebApiCache.TryGetValue(_cachekey, out Tuple<DateTime, IActionResult> cachedResult))
+            //verifica se tem valor no cache com o id '_cachekey'.
+            if (ApiCache.TryGetValue(_cachekey, out IActionResult cachedResult))
             {
-                //verifica se o tempo atual é menor que o tempo de expiração armazenado no cache.
-                if (DateTime.Now < cachedResult.Item1)
-                {
-                    //A resposta é recuperada do cache e o método retorna
-                    context.Result = cachedResult.Item2;
-                    return;
-                }
-                else
-                {
-                    //Se o tempo atual for maior ou igual ao tempo de expiração,
-                    //então o valor é removido do cache.
-                    WebApiCache.Remove(_cachekey);
-                }
+                context.Result = cachedResult;
+                return;
             }
 
-            //Se a ação não estiver no cache ou o valor no cache tiver expirado,
-            //a ação do controlador é chamada.
             var executedContext = await next();
-
-            //Após a execução da ação, a resposta é armazenada no cache.
             ArmazenarRespostaEmCache(executedContext);
         }
 
-        private void ArmazenarRespostaEmCache(ActionExecutedContext executedContext)
+        private void ArmazenarRespostaEmCache(ActionExecutedContext context)
         {
-            //cria a chave de cache.
-            string _cachekey = CreateCacheKey(executedContext.HttpContext.Request);
-
-            if (executedContext.Result is OkObjectResult okResult)
+            if (context.Result is OkObjectResult okResult)
             {
-                //configurando as opções de entrada do cache.
-                //Estamos definindo uma expiração absoluta, que é o tempo total máximo
-                //que a entrada pode permanecer no cache antes de ser removida.
-                //Este tempo é especificado pela variável '_timespan',
-                var cacheEntryOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(TimeSpan.FromSeconds(_timespan));
+                string cacheKey = CreateCacheKey(context.HttpContext.Request);
 
-                //Tipo 'Tuple': tupla é uma classe de coleção no .NET que permite armazenar vários elementos diferentes ex: Tuple<int, string, DateTime> 
-                //criando uma tupla para armazenar no cache, a hora em o cache deve expirar
-                // e o resultado da ação.
-                var resultToCache = new Tuple<DateTime, IActionResult>(DateTime.Now.AddSeconds(_timespan), okResult);
+                ApiCache.Set(cacheKey, okResult,
+                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromSeconds(_timespan))); //tempo de expiração do cache
 
-                //Adicionando a entrada ao cache.
-                //Usando a chave de cache que criamos antes,
-                //os dados da tupla que queremos armazenar
-                //e as opções de entrada do cache que configuramos
-                WebApiCache.Set(_cachekey, resultToCache, cacheEntryOptions);
-                KeyList.Add(_cachekey);
+                KeyList.Add(cacheKey);
             }
-
         }
 
         protected string CreateCacheKey(HttpRequest request)
@@ -104,7 +73,7 @@ namespace DadosInCached.CustomAttribute
         {
             foreach (var key in KeyList)
             {
-                WebApiCache.Remove(key);
+                ApiCache.Remove(key);
             }
 
             KeyList.Clear();
