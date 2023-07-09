@@ -12,7 +12,7 @@ namespace DadosInCached.CustomAttribute
     [AttributeUsage(AttributeTargets.Class)]
     public class CachedAttribute : Attribute, IAsyncActionFilter
     {
-        protected int _timespan;
+        protected int _expirationTime;
 
        //armazenará as chaves dos itens em cache
         protected readonly List<string> KeyList = new();
@@ -20,9 +20,9 @@ namespace DadosInCached.CustomAttribute
         //classe que fornece um armazenamento em cache na memória para objetos.
         protected readonly MemoryCache ApiCache = new(new MemoryCacheOptions());
 
-        public CachedAttribute(int timespan = 40)
+        public CachedAttribute(int expirationTime = 5)
         {
-            _timespan = timespan;
+            _expirationTime = expirationTime;
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -55,7 +55,7 @@ namespace DadosInCached.CustomAttribute
                 string cacheKey = CreateCacheKey(context.HttpContext.Request);
 
                 ApiCache.Set(cacheKey, okResult,
-                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromSeconds(_timespan))); //tempo de expiração do cache
+                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(_expirationTime))); //tempo de expiração do cache
 
                 KeyList.Add(cacheKey);
             }
