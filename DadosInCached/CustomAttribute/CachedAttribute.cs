@@ -58,8 +58,6 @@ namespace DadosInCached.CustomAttribute
                 {
                     //A resposta é recuperada do cache e o método retorna
                     context.Result = cachedResult.Item2;
-
-                    await next();
                     return;
                 }
                 else
