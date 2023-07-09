@@ -16,20 +16,15 @@ namespace DadosInCached.Controllers.Base
             UserId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
         }
 
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<string> ReadRequestBody()
         {
             Request.EnableBuffering();
+            using var reader = new StreamReader(Request.Body, leaveOpen: true);
 
-            var body = "";
+            string body = await reader.ReadToEndAsync();
+            Request.Body.Position = 0;
 
-            using (var reader = new StreamReader(Request.Body,
-                encoding: Encoding.UTF8,
-                detectEncodingFromByteOrderMarks: false,
-                leaveOpen: true))
-            {
-                body = await reader.ReadToEndAsync();
-                Request.Body.Position = 0;
-            }
             return body;
         }
     }
