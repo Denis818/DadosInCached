@@ -25,7 +25,11 @@ namespace DadosInCached.CustomAttribute
         //será chamado antes e depois da execução de uma ação do controlador.
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            if (context.Controller is not BaseApiController baseApiController) return;
+            if (context.Controller is not BaseApiController baseApiController)
+            {
+                await next();
+                return;
+            }
 
             //Headers["Referer"]serve para obter a URL completa de onde a solicitação foi originada.
             //Com isso montamos uma key para usar como a chave de cache.
@@ -54,6 +58,8 @@ namespace DadosInCached.CustomAttribute
                 {
                     //A resposta é recuperada do cache e o método retorna
                     context.Result = cachedResult.Item2;
+
+                    await next();
                     return;
                 }
                 else
