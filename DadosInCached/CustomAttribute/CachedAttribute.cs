@@ -14,7 +14,7 @@ namespace DadosInCached.CustomAttribute
     {
         protected int _expirationTime;
 
-        //armazenará as chaves dos itens em cache
+       //armazenará as chaves dos itens em cache
         protected readonly List<string> KeyList = new();
 
         //classe que fornece um armazenamento em cache na memória para objetos.
@@ -50,12 +50,15 @@ namespace DadosInCached.CustomAttribute
 
         private void ArmazenarRespostaEmCache(ActionExecutedContext context)
         {
-            string cacheKey = CreateCacheKey(context.HttpContext.Request);
+            if (context.Result is OkObjectResult okResult)
+            {
+                string cacheKey = CreateCacheKey(context.HttpContext.Request); 
 
-            ApiCache.Set(cacheKey, context.Result,
-                new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(_expirationTime))); //tempo de expiração do cache
+                ApiCache.Set(cacheKey, okResult,
+                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(_expirationTime))); //tempo de expiração do cache
 
-            KeyList.Add(cacheKey);
+                KeyList.Add(cacheKey);
+            }
         }
 
         protected string CreateCacheKey(HttpRequest request)
