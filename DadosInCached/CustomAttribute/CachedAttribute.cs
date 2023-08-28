@@ -5,10 +5,11 @@ using Microsoft.Extensions.Caching.Memory;
 namespace DadosInCached.CustomAttribute
 {
 
-    //Em resumo, esse método está armazenando o resultado bem-sucedido de uma ação no cache,
-    //com uma chave específica e um tempo de expiração.
-    //Isso permite que o resultado seja reutilizado para solicitações futuras sem precisar recalculá-lo,
-    //desde que a entrada do cache ainda não tenha expirado.
+    /// <summary>
+    /// Atributo utiliza o cache em memória para armazenar respostas de uma action bem-sucedida.<br/>
+    /// Se a requisição feita não for um <b>GET</b>, o cache é limpo para ser atualizado. <br/>
+    /// Permite a configuração de um tempo de expiração para os dados em cache, por padrão é <b>5min</b>.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public class CachedAttribute : Attribute, IAsyncActionFilter
     {
