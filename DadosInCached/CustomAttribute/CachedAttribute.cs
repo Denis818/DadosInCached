@@ -9,12 +9,12 @@ namespace DadosInCached.CustomAttribute
     //com uma chave específica e um tempo de expiração.
     //Isso permite que o resultado seja reutilizado para solicitações futuras sem precisar recalculá-lo,
     //desde que a entrada do cache ainda não tenha expirado.
-    [AttributeUsage(AttributeTargets.Class)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public class CachedAttribute : Attribute, IAsyncActionFilter
     {
         protected int _expirationTime;
 
-       //armazenará as chaves dos itens em cache
+        //armazenará as chaves dos itens em cache
         protected readonly List<string> KeyList = new();
 
         //classe que fornece um armazenamento em cache na memória para objetos.
@@ -50,15 +50,12 @@ namespace DadosInCached.CustomAttribute
 
         private void ArmazenarRespostaEmCache(ActionExecutedContext context)
         {
-            if (context.Result is OkObjectResult okResult)
-            {
-                string cacheKey = CreateCacheKey(context.HttpContext.Request);
+            string cacheKey = CreateCacheKey(context.HttpContext.Request);
 
-                ApiCache.Set(cacheKey, okResult,
-                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(_expirationTime))); //tempo de expiração do cache
+            ApiCache.Set(cacheKey, context.Result,
+                new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(_expirationTime))); //tempo de expiração do cache
 
-                KeyList.Add(cacheKey);
-            }
+            KeyList.Add(cacheKey);
         }
 
         protected string CreateCacheKey(HttpRequest request)

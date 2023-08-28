@@ -1,9 +1,11 @@
+using DadosInCached.CustomAttribute;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DadosInCached.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Cached(15)]
     public class WeatherForecastController : ControllerBase
     {
         private static readonly string[] Summaries = new[]
