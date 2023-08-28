@@ -11,7 +11,6 @@
     <li>Armazena o resultado de ações bem-sucedidas no cache com uma chave específica e um tempo de expiração.</li>
     <li>Reutiliza o resultado armazenado para solicitações futuras, desde que o cache ainda não tenha expirado.</li>
     <li>Limpa o cache automaticamente quando uma requisição que não seja <code>GET</code> é feita, garantindo que os dados sejam atualizados.</li>
-    <li>Fornece um mecanismo para criar chaves de cache com base na URI da solicitação.</li>
 </ul>
 
 <h2>Como usar</h2>
@@ -28,7 +27,6 @@ public IActionResult MinhaAcao()
 <h2>Considerações</h2>
 <ul>
     <li>O cache é armazenado na memória, o que significa que ele será limpo se o aplicativo for reiniciado.</li>
-    <li>O atributo foi projetado principalmente para ações que retornam um <code>OkObjectResult</code>. Outros tipos de resultados não serão armazenados em cache.</li>
 </ul>
 
 
