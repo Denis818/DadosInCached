@@ -27,6 +27,7 @@ public IActionResult MinhaAcao()
 <h2>Considerações</h2>
 <ul>
     <li>O cache é armazenado na memória, o que significa que ele será limpo se o aplicativo for reiniciado.</li>
+    <li>O atributo foi projetado principalmente para ações que retornam um <code>OkObjectResult</code>. Outros tipos de resultados não serão armazenados em cache.</li>
 </ul>
 
 
