@@ -13,13 +13,13 @@ namespace DadosInCached.CustomAttribute
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public class CachedAttribute : Attribute, IAsyncActionFilter
     {
-        protected int _expirationTime;
+        private readonly int _expirationTime;
 
        //armazenará as chaves dos itens em cache
-        protected readonly List<string> KeyList = new();
+        private readonly List<string> KeyList = new();
 
         //classe que fornece um armazenamento em cache na memória para objetos.
-        protected readonly MemoryCache ApiCache = new(new MemoryCacheOptions());
+        private static readonly MemoryCache _apiCache = new (new MemoryCacheOptions());
 
         public CachedAttribute(int expirationTime = 5)
         {
@@ -39,7 +39,7 @@ namespace DadosInCached.CustomAttribute
             }
 
             //verifica se tem valor no cache com o id '_cachekey'.
-            if (ApiCache.TryGetValue(_cachekey, out IActionResult cachedResult))
+            if (_apiCache.TryGetValue(_cachekey, out IActionResult cachedResult))
             {
                 context.Result = cachedResult;
                 return;
@@ -53,16 +53,16 @@ namespace DadosInCached.CustomAttribute
         {
             if (context.Result is OkObjectResult okResult)
             {
-                string cacheKey = CreateCacheKey(context.HttpContext.Request); 
+                string cacheKey = CreateCacheKey(context.HttpContext.Request);
 
-                ApiCache.Set(cacheKey, okResult,
+                _apiCache.Set(cacheKey, okResult,
                     new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(_expirationTime))); //tempo de expiração do cache
 
                 KeyList.Add(cacheKey);
             }
         }
 
-        protected string CreateCacheKey(HttpRequest request)
+        private string CreateCacheKey(HttpRequest request)
         {
             string baseUri = $"{request.Scheme}://{request.Host.Value}";
             string fullPath = $"{request.Path.Value}{request.QueryString.Value}";
@@ -70,11 +70,11 @@ namespace DadosInCached.CustomAttribute
             return $"{baseUri}{fullPath}";
         }
 
-        protected void CleanCache()
+        private void CleanCache()
         {
             foreach (var key in KeyList)
             {
-                ApiCache.Remove(key);
+                _apiCache.Remove(key);
             }
 
             KeyList.Clear();

@@ -5,6 +5,7 @@ namespace DadosInCached.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Cached(15)]
     public class WeatherForecastController : ControllerBase
     {
         private static readonly string[] Summaries = new[]
@@ -12,9 +13,8 @@ namespace DadosInCached.Controllers
           "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
         };
 
-        [HttpGet(Name = "GetWeatherForecast")]
-        [Cached(15)]
-        public IActionResult Get()
+        [HttpPost(Name = "GetWeatherForecast")]
+        public IActionResult Post()
         {
             return Ok(Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
