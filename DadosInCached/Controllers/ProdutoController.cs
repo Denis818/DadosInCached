@@ -3,9 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using DadosInCached.Context;
 using DadosInCached.Models;
 using DadosInCached.CustomAttribute;
-using DadosInCached.Interfaces;
 using AutoMapper;
 using DadosInCached.Models.Dtos;
+using DadosInCached.Interfaces.Base;
+using DadosInCached.Interfaces;
 
 namespace DadosInCached.Controllers
 {
@@ -14,11 +15,11 @@ namespace DadosInCached.Controllers
     [Route("api/[controller]")]
     public class ProdutoController : ControllerBase
     {
-        private readonly IRepositoryBase<Produto> _produtoRepository;
+        private readonly IProdutoRepository _produtoRepository;
         protected readonly IMapper _mapper;
 
 
-        public ProdutoController(IRepositoryBase<Produto> produtoRepository, IMapper mapper)
+        public ProdutoController(IProdutoRepository produtoRepository, IMapper mapper)
         {
             _produtoRepository = produtoRepository;
             _mapper = mapper;

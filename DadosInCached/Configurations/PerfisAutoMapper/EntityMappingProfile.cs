@@ -2,7 +2,7 @@
 using DadosInCached.Models;
 using DadosInCached.Models.Dtos;
 
-namespace Application.Configurations.PerfisAutoMapper
+namespace DadosInCached.Configurations.PerfisAutoMapper
 {
     public class EntityMappingProfile : Profile
     {

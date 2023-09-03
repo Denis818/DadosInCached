@@ -1,7 +1,7 @@
 ﻿using DadosInCached.Models;
 using System.Linq.Expressions;
 
-namespace DadosInCached.Interfaces
+namespace DadosInCached.Interfaces.Base
 {
     public interface IRepositoryBase<TEntity> where TEntity : class, new()
     {

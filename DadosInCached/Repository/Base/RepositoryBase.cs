@@ -1,17 +1,17 @@
 ﻿using DadosInCached.Context;
-using DadosInCached.Interfaces;
+using DadosInCached.Interfaces.Base;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
-namespace DadosInCached.Repository
+namespace DadosInCached.Repository.Base
 {
-    public class RepositoryBase<TEntity> : IRepositoryBase<TEntity>
+    public abstract class RepositoryBase<TEntity> : IRepositoryBase<TEntity>
         where TEntity : class, new()
     {
         protected readonly AppDbContext _context;
         protected DbSet<TEntity> DbSet { get; }
 
-        public RepositoryBase(IServiceProvider service)
+        protected RepositoryBase(IServiceProvider service)
         {
             _context = service.GetRequiredService<AppDbContext>();
             DbSet = _context.Set<TEntity>();
