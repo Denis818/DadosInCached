@@ -1,25 +1,21 @@
 ﻿using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Azure.Core;
+using System.Text;
+using Microsoft.AspNetCore.Http.Extensions;
+using NuGet.Protocol;
 
 namespace DadosInCached.CustomAttribute
 {
-
-    /// <summary>
-    /// Atributo utiliza o cache em memória para armazenar respostas de uma action bem-sucedida.<br/>
-    /// Se a requisição feita não for um <b>GET</b>, o cache é limpo para ser atualizado. <br/>
-    /// Permite a configuração de um tempo de expiração para os dados em cache, por padrão é <b>5min</b>.
-    /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public class CachedAttribute : Attribute, IAsyncActionFilter
     {
         private readonly int _expirationTime;
 
-       //armazenará as chaves dos itens em cache
         private readonly List<string> KeyList = new();
 
-        //classe que fornece um armazenamento em cache na memória para objetos.
-        private static readonly MemoryCache _apiCache = new (new MemoryCacheOptions());
+        private static readonly MemoryCache _memoryCache = new(new MemoryCacheOptions());
 
         public CachedAttribute(int expirationTime = 5)
         {
@@ -28,53 +24,46 @@ namespace DadosInCached.CustomAttribute
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            string _cachekey = CreateCacheKey(context.HttpContext.Request);
-
-            //se a requisição feita não for um get o cache é limpado para ser atualizado.
             if (context.HttpContext.Request.Method != "GET")
             {
                 CleanCache();
                 await next();
-                return;
             }
-
-            //verifica se tem valor no cache com o id '_cachekey'.
-            if (_apiCache.TryGetValue(_cachekey, out IActionResult cachedResult))
+            else if (_memoryCache.TryGetValue(CreateCacheKey(context.HttpContext.Request), out IActionResult cachedResult))
             {
                 context.Result = cachedResult;
-                return;
             }
-
-            var executedContext = await next();
-            ArmazenarRespostaEmCache(executedContext);
+            else
+            {
+                SaveResponseToCache(await next());
+            }
         }
 
-        private void ArmazenarRespostaEmCache(ActionExecutedContext context)
+        private void SaveResponseToCache(ActionExecutedContext context)
         {
             if (context.Result is OkObjectResult okResult)
             {
                 string cacheKey = CreateCacheKey(context.HttpContext.Request);
 
-                _apiCache.Set(cacheKey, okResult,
-                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(_expirationTime))); //tempo de expiração do cache
+                _memoryCache.Set(cacheKey, okResult,
+                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(_expirationTime)));
 
                 KeyList.Add(cacheKey);
             }
         }
 
-        private string CreateCacheKey(HttpRequest request)
+        private static string CreateCacheKey(HttpRequest request)
         {
-            string baseUri = $"{request.Scheme}://{request.Host.Value}";
-            string fullPath = $"{request.Path.Value}{request.QueryString.Value}";
-
-            return $"{baseUri}{fullPath}";
+            string fullEncodedUrl = $"{request.GetEncodedUrl()}/{request.QueryString.Value}";
+            string route = $"{request.Method}/{request.HttpContext.GetRouteData().Values.FirstOrDefault()}";
+            return $"{fullEncodedUrl}{route}";
         }
 
         private void CleanCache()
         {
             foreach (var key in KeyList)
             {
-                _apiCache.Remove(key);
+                _memoryCache.Remove(key);
             }
 
             KeyList.Clear();
